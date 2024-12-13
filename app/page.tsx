@@ -27,7 +27,7 @@ export default function Home() {
       });
       const data = await response.json();
       setMessage(data.message || 'Error uploading file');
-    } catch (error) {
+    } catch {
       setMessage('Error uploading file');
     }
   };
