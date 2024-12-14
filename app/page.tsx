@@ -1,10 +1,16 @@
-// app/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+type FileData = {
+  name: string;
+  path: string;
+  createdAt: string;
+};
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null); // TypeScript requires type for file
+  const [files, setFiles] = useState<FileData[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string>('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -15,7 +21,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return; // Ensure there's a file before submitting
+    if (!file) return;
 
     const formData = new FormData();
     formData.append('file', file);
@@ -27,10 +33,25 @@ export default function Home() {
       });
       const data = await response.json();
       setMessage(data.message || 'Error uploading file');
+      fetchFiles(); // Refresh file list after upload
     } catch {
       setMessage('Error uploading file');
     }
   };
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch('/api/upload'); // Call the GET method on the upload route
+      const data: FileData[] = await response.json();
+      setFiles(data);
+    } catch {
+      setMessage('Error fetching files');
+    }
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
 
   return (
     <div>
@@ -40,6 +61,17 @@ export default function Home() {
         <button type="submit">Upload</button>
       </form>
       <p>{message}</p>
+      <ul>
+        {files.map((file) => (
+          <li key={file.name}>
+            <a href={file.path} target="_blank" rel="noopener noreferrer">
+              {file.name}
+            </a>
+            <br />
+            Uploaded on: {new Date(file.createdAt).toLocaleString()}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-// app/api/upload/route.js
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
@@ -9,29 +8,44 @@ export const config = {
   },
 };
 
-export async function POST(req) {
-  const form = new formidable.IncomingForm();
-  form.uploadDir = path.join(process.cwd(), '/public/uploads'); // Save files in 'public/uploads' folder
-  form.keepExtensions = true; // Keep file extensions
+export default function handler(req, res) {
+  if (req.method === 'POST') {
+    const form = new formidable.IncomingForm();
+    const uploadDir = path.join(process.cwd(), '/public/uploads');
+    
+    // Check if the upload directory exists, if not create it
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
 
-  return new Promise((resolve, reject) => {
+    form.uploadDir = uploadDir;
+    form.keepExtensions = true;
+
     form.parse(req, (err, fields, files) => {
       if (err) {
-        reject(new Response(JSON.stringify({ error: 'Something went wrong during the upload' }), { status: 500 }));
-        return;
+        console.error('Parsing error:', err);
+        return res.status(500).json({ error: 'Error parsing the file' });
       }
 
-      // Move file to a permanent location
-      const tempPath = files.file[0].filepath;
-      const targetPath = path.join(process.cwd(), 'public/uploads', files.file[0].newFilename);
+      const tempPath = files.file?.[0]?.filepath;
+      if (!tempPath) {
+        console.error('File not found in request.');
+        return res.status(400).json({ error: 'No file provided' });
+      }
+
+      const targetPath = path.join(uploadDir, files.file[0].newFilename);
 
       fs.rename(tempPath, targetPath, (err) => {
         if (err) {
-          reject(new Response(JSON.stringify({ error: 'Error saving the file' }), { status: 500 }));
-          return;
+          console.error('Error saving file:', err);
+          return res.status(500).json({ error: 'Error saving the file' });
         }
-        resolve(new Response(JSON.stringify({ message: 'File uploaded successfully', filePath: `/uploads/${files.file[0].newFilename}` }), { status: 200 }));
+
+        console.log('File uploaded successfully:', targetPath);
+        return res.status(200).json({ message: 'File uploaded successfully', filePath: `/uploads/${files.file[0].newFilename}` });
       });
     });
-  });
+  } else {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 }
