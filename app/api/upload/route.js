@@ -1,5 +1,3 @@
-// app/api/upload/route.js
-
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import path from 'path';
@@ -11,9 +9,9 @@ export const config = {
   },
 };
 
-// Handling the request
-export default function handler(req, res) {
-  if (req.method === 'POST') {
+// Handling the POST request
+export async function POST(req) {
+  return new Promise((resolve, reject) => {
     const form = new IncomingForm();
     const uploadDir = path.join(process.cwd(), '/public/uploads');
 
@@ -28,13 +26,13 @@ export default function handler(req, res) {
     form.parse(req, (err, fields, files) => {
       if (err) {
         console.error('Error parsing file:', err);
-        return res.status(500).json({ error: 'Error parsing file' });
+        reject(new Response(JSON.stringify({ error: 'Error parsing file' }), { status: 500 }));
       }
 
       const tempPath = files.file?.[0]?.filepath;
       if (!tempPath) {
         console.error('File not found in request.');
-        return res.status(400).json({ error: 'No file provided' });
+        reject(new Response(JSON.stringify({ error: 'No file provided' }), { status: 400 }));
       }
 
       const targetPath = path.join(uploadDir, files.file[0].newFilename);
@@ -42,14 +40,12 @@ export default function handler(req, res) {
       fs.rename(tempPath, targetPath, (err) => {
         if (err) {
           console.error('Error saving file:', err);
-          return res.status(500).json({ error: 'Error saving the file' });
+          reject(new Response(JSON.stringify({ error: 'Error saving the file' }), { status: 500 }));
         }
 
         console.log('File uploaded successfully:', targetPath);
-        return res.status(200).json({ message: 'File uploaded successfully', filePath: `/uploads/${files.file[0].newFilename}` });
+        resolve(new Response(JSON.stringify({ message: 'File uploaded successfully', filePath: `/uploads/${files.file[0].newFilename}` }), { status: 200 }));
       });
     });
-  } else {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  });
 }
